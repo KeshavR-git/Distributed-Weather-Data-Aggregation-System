@@ -19,6 +19,12 @@ public class CalculatorClient {
                 stub.pushValue(5);
                 stub.pop();
             }
+            // Client 3
+            else if (clientNumber == 3) {
+                stub.pushValue(10);
+                stub.pushValue(15);
+                stub.pushOperation("gcd");
+            }
         } catch (Exception e) {
             System.out.println(e);
         }

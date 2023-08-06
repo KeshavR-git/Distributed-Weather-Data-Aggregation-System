@@ -51,6 +51,7 @@ public class CalculatorImplementation extends UnicastRemoteObject implements Cal
             }
             st.push(gcd);
         }
+        arr.clear();
     }
     // pops element from top of stack
     public synchronized int pop() {
