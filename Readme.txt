@@ -1,5 +1,3 @@
-Sure, here's a detailed README file on how to run and test your program over a local machine:
-
 # Weather Data Aggregation Server
 
 This is a simple weather data aggregation server that listens for incoming connections on a specified port. 
