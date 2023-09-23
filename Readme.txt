@@ -28,9 +28,8 @@ For other requests, it assumes they are JSON objects containing weather data and
    This will start the GET Client, which will send a GET request to the Aggregation Server and print out the response.
 
 ## Testing
-
-To test the program, you can modify `weatherData.txt` with different weather data and observe how it's sent from the Content Server to the Aggregation Server and then retrieved by the GET Client.
-You can also modify `GETClient.java` to send different types of requests (e.g., GET requests for different station IDs or other types of requests) and observe how they're handled by the Aggregation Server.
+I am yet to do testing for the program, I will be using JUnit for unit testing.
+I will also be creating a test harness for integration and regression testing.
 
 ## Things I need to add:
 1. Different Status Codes for GET AND PUT like 200, 201, 500, 400, 204 in the responses
