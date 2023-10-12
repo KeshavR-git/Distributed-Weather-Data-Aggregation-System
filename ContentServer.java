@@ -1,19 +1,23 @@
+
 // ContentServer.java
 import java.io.*; // library for handling input and output
 import java.net.*; // library for handling networking
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.*; 
-import org.json.*; // for JSON parsign
+import java.util.stream.*;
+import org.json.*; // for JSON parsing
 
 public class ContentServer {
+    private static int lamportClock = 0;
+
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args.length < 3) {
             System.out.println("Usage: java ContentServer <file path> <server host> <server port>");
             return;
         }
-        // storing the second command line argument which is the aggregationServer host in serverHost
+        // storing the second command line argument which is the aggregationServer host
+        // in serverHost
         String serverHost = args[1];
         // port number of the aggregationServer
         int serverPort = Integer.parseInt(args[2]);
@@ -28,12 +32,13 @@ public class ContentServer {
                 String content = String.join("\n", currentData);
                 JSONObject json = convertToJson(content);
                 sendToAggregationServer(serverHost, serverPort, json.toString());
-    
+
                 // Clear currentData for the next set of data.
                 currentData.clear();
-    
+
                 // Wait for 30 seconds.
                 Thread.sleep(30000);
+                lamportClock++;
             } else {
                 currentData.add(line);
             }
@@ -63,16 +68,33 @@ public class ContentServer {
         }
         return json;
     }
+
     // method to send data through sockets
     private static void sendToAggregationServer(String host, int port, String message) throws IOException {
         Socket socket = new Socket(host, port);
         PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-        out.println(message);
+        out.println("PUT /weather.json HTTP/1.1"); // start of the PUT request
+        out.println("Lamport-Clock: " + lamportClock); // Include Lamport clock value in request
+        out.println("User-Agent: ATOMClient/1/0");
+        out.println("Content-Type: application/json");
+        out.println("Content-Length: " + message.length());
+        out.println(); // blank line between headers and content
+        out.println(message); // JSON content
+        try {
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            String line;
+            while (!(line = in.readLine()).isEmpty()) {
+                if (line.startsWith("Lamport-Clock")) {
+                    int receivedClock = Integer.parseInt(line.split(": ")[1]);
+                    lamportClock = Math.max(lamportClock, receivedClock) + 1; // Update Lamport clock
+                }
+            }
+            in.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error while reading response from AggregationServer.");
+        }
+        lamportClock++; // increment Lamport clock after successful update
         socket.close();
     }
 }
-
-
-
-
-
