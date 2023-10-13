@@ -62,11 +62,13 @@ public class GETClient {
                         lamportClock = Math.max(lamportClock, receivedClock) + 1; // Update Lamport clock
                     }
                 }
+                
                 StringBuilder sb = new StringBuilder(); // A stringBuilder is used to create a mutable sequence of
                                                         // characters.
                 while ((line = response.readLine()) != null) {
                     sb.append(line);
                 }
+                
                 if (sb.toString().contains("Data for stationID") && sb.toString().contains("not found.")) {
                     System.out.println(sb.toString());
                     response.close();

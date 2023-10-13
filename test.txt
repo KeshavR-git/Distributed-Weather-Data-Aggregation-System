@@ -1,0 +1,3 @@
+id:station1
+temp:25
+---

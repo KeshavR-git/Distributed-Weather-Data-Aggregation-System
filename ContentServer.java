@@ -11,6 +11,10 @@ import org.json.*; // for JSON parsing
 public class ContentServer {
     private static int lamportClock = 0;
 
+    public static int getLamportClock() {
+        return lamportClock;
+    }
+
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args.length < 3) {
             System.out.println("Usage: java ContentServer <file path> <server host> <server port>");
@@ -37,7 +41,7 @@ public class ContentServer {
                 currentData.clear();
 
                 // Wait for 30 seconds.
-                Thread.sleep(30000);
+                // Thread.sleep(30000);
                 lamportClock++;
             } else {
                 currentData.add(line);
@@ -53,7 +57,7 @@ public class ContentServer {
     }
 
     // method for doing the JSON parsing (JSON parser)
-    private static JSONObject convertToJson(String content) {
+    protected static JSONObject convertToJson(String content) {
         JSONObject json = new JSONObject();
         String[] lines = content.split("\n");
         for (String line : lines) {
@@ -82,16 +86,26 @@ public class ContentServer {
         out.println(message); // JSON content
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            String line;
-            while (!(line = in.readLine()).isEmpty()) {
+            String line = in.readLine();
+
+            if (line.contains("400")) { // Checking if the status code is 400
+                System.out.println("Received 400 Bad Request from AggregationServer.");
+                in.close();
+                socket.close();
+                return; // Exit the method if a 400 status code is received
+            }
+
+            while (line != null && !line.isEmpty()) {
                 if (line.startsWith("Lamport-Clock")) {
                     int receivedClock = Integer.parseInt(line.split(": ")[1]);
                     lamportClock = Math.max(lamportClock, receivedClock) + 1; // Update Lamport clock
                 }
+                line = in.readLine();
             }
             in.close();
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("Error: " + e.getMessage());
             System.out.println("Error while reading response from AggregationServer.");
         }
         lamportClock++; // increment Lamport clock after successful update

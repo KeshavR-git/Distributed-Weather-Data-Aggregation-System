@@ -11,7 +11,7 @@ import org.json.*; // library for json parsing
 class Request {
     public Socket clientSocket;
     public int lamportClock;
-    
+
     public Request(Socket clientSocket, int lamportClock) {
         this.clientSocket = clientSocket;
         this.lamportClock = lamportClock;
@@ -26,14 +26,13 @@ public class AggregationServer {
     // lamport clock
     public static int lamportClock = 0;
 
+    public static int getLamportClock() {
+        return lamportClock;
+    }
+
     public static PriorityQueue<Request> requestQueue = new PriorityQueue<>(
-        (a, b) -> Integer.compare(a.lamportClock, b.lamportClock)
-    );
+            (a, b) -> Integer.compare(a.lamportClock, b.lamportClock));
 
-
-    // // Read-write lock for handling simultaneous GET and PUT requests
-    // private static final ReadWriteLock lock = new ReentrantReadWriteLock();
-    
     // Method to get weather data for a specific station ID. It's synchronized to
     // prevent concurrent modification issues.
     public static synchronized JSONObject getWeatherData(String stationID) {
@@ -52,18 +51,22 @@ public class AggregationServer {
         }
     }
 
+    public static synchronized void incrementLamportClock() {
+        lamportClock++;
+    }
+
     public static void rewriteBackupFile() {
         List<String> freshData = new ArrayList<>();
         String filePath = "backup.txt";
-    
+
         // Read the file and filter out the outdated data
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 JSONObject json = new JSONObject(line);
                 String stationID = json.getString("id");
-                if (lastUpdateTime.containsKey(stationID) && 
-                    System.currentTimeMillis() - lastUpdateTime.get(stationID) <= 30000) { 
+                if (lastUpdateTime.containsKey(stationID) &&
+                        System.currentTimeMillis() - lastUpdateTime.get(stationID) <= 30000) {
                     freshData.add(line);
                 }
             }
@@ -71,9 +74,10 @@ public class AggregationServer {
             System.out.println("An error occurred while reading the backup file.");
             e.printStackTrace();
         }
-    
+
         // Write the fresh data back to the file
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) { // 'false' to overwrite the file
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, false))) { // 'false' to overwrite the
+                                                                                            // file
             for (String data : freshData) {
                 writer.write(data);
                 writer.newLine();
@@ -84,7 +88,7 @@ public class AggregationServer {
         }
     }
 
-    private void loadDataFromFile() {
+    public static void loadDataFromFile() {
         File file = new File("backup.txt");
         if (file.exists() && !file.isDirectory()) {
             try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -99,15 +103,23 @@ public class AggregationServer {
             }
         }
     }
-    
 
     public static void main(String[] args) throws IOException {
-        if (args.length < 1) {
-            System.out.println("Usage: java AggregationServer <port number>");
-            return;
-        }
+        Scanner scanner = new Scanner(System.in); // Create a new Scanner object
+        System.out.print("Enter port number (Press Enter for default 4567): "); // Prompt the user for input
+        String inputPort = scanner.nextLine().trim(); // Read the user's input
 
-        int port = Integer.parseInt(args[0]); // Parsing the port number from command line arguments
+        int port;
+        if (inputPort.isEmpty()) {
+            port = 4567; // Use the default port if the user pressed Enter
+        } else {
+            try {
+                port = Integer.parseInt(inputPort); // Parse the user's input to an integer
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid port number entered. Using default port 4567.");
+                port = 4567;
+            }
+        }
         ServerSocket serverSocket = new ServerSocket(port); // Creating a new server socket that listens on the
                                                             // specified port
         Timer timer = new Timer();
@@ -124,7 +136,7 @@ public class AggregationServer {
         while (true) {
             Socket clientSocket = serverSocket.accept(); // Accepting a new client connection
             // increment Lamport clock after successful connection
-            lamportClock++;
+            incrementLamportClock();
             // Starting a new thread to handle the client connection so that multiple
             // clients can be served concurrently
             // new Thread(new ClientHandler(clientSocket)).start();
@@ -132,7 +144,7 @@ public class AggregationServer {
             // New line:
             synchronized (requestQueue) {
                 requestQueue.add(new Request(clientSocket, lamportClock));
-                requestQueue.notify();  // Notify any waiting threads
+                requestQueue.notify(); // Notify any waiting threads
             }
 
             // This thread processes requests in the order of their Lamport timestamps.
@@ -142,12 +154,12 @@ public class AggregationServer {
                     synchronized (requestQueue) {
                         while (requestQueue.isEmpty()) {
                             try {
-                                requestQueue.wait();  // Wait until there's a request in the queue
+                                requestQueue.wait(); // Wait until there's a request in the queue
                             } catch (InterruptedException e) {
                                 e.printStackTrace();
                             }
                         }
-                        nextRequest = requestQueue.poll();  // Fetch the next request (with the smallest Lamport clock)
+                        nextRequest = requestQueue.poll(); // Fetch the next request (with the smallest Lamport clock)
                     }
                     // Handle this request
                     new Thread(new ClientHandler(nextRequest.clientSocket)).start();
@@ -162,19 +174,17 @@ public class AggregationServer {
         // weatherData.put(stationID, data);
         // add the station ID to the set of received IDs
         // recvdStationIDs.add(stationID);
-        if (!recvdStationIDs.contains(stationID)) {
+        if (!recvdStationIDs.contains(stationID) && out != null) {
             recvdStationIDs.add(stationID);
             out.print("HTTP/1.1 201 Created");
-        } else {
+        } else if (out != null) {
             out.println("HTTP/1.1 200 OK");
+        } else {
+            System.out.println("Null printWriter object");
         }
         weatherData.put(stationID, data);
         lastUpdateTime.put(stationID, System.currentTimeMillis());
     }
-
-    // public static void weatherDataRecvTime(String id) {
-    //     lastUpdateTime.put(id, System.currentTimeMillis());
-    // }
 }
 
 // Implementing Runnable so that it can be used in a thread
@@ -199,7 +209,8 @@ class ClientHandler implements Runnable {
             while ((message = in.readLine()) != null) {
                 if (message.startsWith("GET")) {
                     out.println("HTTP/1.1 200 OK");
-                    out.println("Lamport-Clock: " + AggregationServer.lamportClock); // Include Lamport clock value in response
+                    out.println("Lamport-Clock: " + AggregationServer.lamportClock); // Include Lamport clock value in
+                                                                                     // response
                     out.println("Content-Type: application/json"); // header
                     out.println(); // blank line between headers and content
                     // Extract stationID from GET request
@@ -222,8 +233,7 @@ class ClientHandler implements Runnable {
                             out.println("HTTP/1.1 404 Not Found");
                             out.println(); // blank line to indicate the end of headers
                             out.println("Data for stationID " + stationID + " not found.");
-                        }
-                        else {
+                        } else {
                             // Send weather data as response
                             out.println(data.toString());
                         }
@@ -238,7 +248,8 @@ class ClientHandler implements Runnable {
                     while (!(message = in.readLine()).isEmpty()) {
                         if (message.startsWith("Lamport-Clock")) {
                             int receivedClock = Integer.parseInt(message.split(": ")[1]);
-                            AggregationServer.lamportClock = Math.max(AggregationServer.lamportClock, receivedClock) + 1; // Update Lamport clock
+                            AggregationServer.lamportClock = Math.max(AggregationServer.lamportClock, receivedClock)
+                                    + 1; // Update Lamport clock
                         }
                     }
                     // Now read the JSON body
@@ -250,7 +261,7 @@ class ClientHandler implements Runnable {
                             throw new JSONException("Invalid JSON: missing 'id' key");
                         }
                         String filePath = "backup.txt";
-                        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))){
+                        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
                             writer.write(message);
                             writer.newLine();
                         } catch (IOException e) {
@@ -262,18 +273,17 @@ class ClientHandler implements Runnable {
                         // Adding the weather data to the map
                         AggregationServer.addWeatherData(stationID, json, out);
                         // Printing a message to indicate that data has been received and stored
-                        AggregationServer.lamportClock++;
+                        AggregationServer.incrementLamportClock();
                         System.out.println("Received and stored data for station: " + stationID);
                         // Acknowledge that the data has been stored
                         out.println("HTTP/1.1 200 OK");
                         out.println("Lamport-Clock: " + AggregationServer.lamportClock);
-                        out.println();  // Important: sends a blank line to indicate the end of headers
+                        out.println(); // Important: sends a blank line to indicate the end of headers
                     } catch (Exception e) {
                         System.out.println("Error parsing JSON: " + e.getMessage());
                         // Send HTTP status code 500
                         out.println("HTTP/1.1 500 Internal Server Error");
                     }
-                    // p
                 } else if (message.isEmpty()) {
                     out.println("HTTP/1.1 204 No Content");
                 }
@@ -287,15 +297,3 @@ class ClientHandler implements Runnable {
         }
     }
 }
-
-// this is for the place "p"
-// Send HTTP status code 200
-                    // out.println("HTTP/1.1 200 OK");
-                    // // Include Lamport clock value in response
-                    // out.println("Lamport-Clock: " + AggregationServer.lamportClock);
-                    // // Include Content-Length header (no message body, so length is 0)
-                    // out.println("Content-Length: 0");
-                    // // Blank line to indicate end of headers
-                    // out.println();
-                    // // Flush the PrintWriter to ensure data is sent
-                    // out.flush();
