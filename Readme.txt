@@ -75,4 +75,6 @@ Integration and Regression Testing
 A test harness has been set up to facilitate both integration and regression testing. This harness will ensure seamless interaction between different parts of our program and will help identify any breaking changes during the development lifecycle
 
 Note: in ContentServerTests it's gonna throw a small error message saying socket closed. That does not affect the testing harness, 
-the tests still run and pass, it's just a java warning. So please ignore that
+the tests still run and pass, it's just a java warning. So please ignore that.
+
+Jar files used: org.json.jar, junit-4.13.2, hamcrest-core-1.3.jar.
