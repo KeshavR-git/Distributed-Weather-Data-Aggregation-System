@@ -5,7 +5,7 @@ The Weather Data Aggregation System is composed of multiple components, designed
 It is structured to handle incoming connections on specified ports, with the ability to concurrently process multiple connections using separate threads.
 
 ## Components
-AggregationServer
+### AggregationServer
 The AggregationServer is the primary server responsible for data collection and retrieval.
 
 Handling Requests: It is equipped to handle multiple types of requests, including:
@@ -14,12 +14,12 @@ Other Requests: Assumed to be weather data in JSON format, which the server then
 The server also employs a Lamport Clock for synchronization purposes.
 Data Management: Data is stored in memory, with mechanisms to periodically clean out stale data. Backup functionalities are also available to ensure data persistency.
 
-## ContentServer
+### ContentServer
 The ContentServer acts as an intermediary, processing and converting raw data before sending it to the AggregationServer in a suitable format.
 
 It reads data from specified files, converts the data to a structured JSON format, and then forwards it to the AggregationServer.
 The server also ensures synchronization using the Lamport Clock mechanism, updating its clock based on responses from the AggregationServer.
-GETClient
+### GETClient
 The GETClient component serves as a client interface to retrieve weather data based on specific station IDs.
 
 Upon initiating a GET request, it communicates with the AggregationServer to fetch the corresponding weather data.
